@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Question Set</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/stylesheets/style.css">
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        color: white;
+        /* padding-top: 60px; Adjust for navbar height */
+        background-image: url("/images/adminHome.jpg");
+        /* image path */
+        background-size: cover;
+        /* Ensures the image covers the entire background */
+        background-position: center;
+        /* Centers the image */
+        background-repeat: no-repeat;
+        /* Prevents the image from repeating */
+        background-attachment: fixed;
+        /* Keeps
+       the background fixed during scroll */
+      }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <nav class="nav justify-content-end mb-4">
+            <a class="nav-link text-white" href="/admin/questionsets">Back to Questions Sets</a>
+            <a class="nav-link text-white" href="/admin/facilitators">Manage Facilitators</a>
+            <a class="nav-link text-white" href="/admin">Home</a>
+            <a class="nav-link text-white" href="/admin/logout">Logout</a>
+        </nav>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <h1 class="text-center mb-4">Add a New Question Set</h1>
+                <form action="/admin/addquestionset" method="POST" enctype="multipart/form-data" class="card p-4 shadow-sm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Set Name:</label>
+                        <input type="text" id="name" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description:</label>
+                        <textarea id="description" name="description" rows="3" class="form-control"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="accessibleBy" class="form-label">Accessible By (comma-separated facilitator names):</label>
+                        <input type="text" id="accessibleBy" name="accessibleBy" class="form-control" placeholder="e.g., facilitator1, facilitator2">
+                    </div>
+                    <div class="mb-3">
+                        <label for="questionsCsv" class="form-label d-flex justify-content-between align-items-center">
+                            <span>Upload Questions (CSV file):</span>
+                            <a href="/files/sampleQuestionSet.csv" download="sampleQuestionSet.csv" class="btn btn-sm btn-outline-info">Download Sample File</a>
+                        </label>
+                        <input type="file" id="questionsCsv" name="questionsCsv" class="form-control" accept=".csv" required>
+                        <div class="form-text">
+                            <a href="#csvPreview" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="csvPreview">
+                                Show sample file format
+                            </a>
+                        </div>
+                        <div class="collapse mt-2" id="csvPreview">
+                            <div class="card card-body bg-light text-dark">
+                                <pre id="csv-preview-content" class="mb-0" style="white-space: pre-wrap; word-break: keep-all;">Loading preview...</pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Create Question Set</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const previewContainer = document.getElementById('csv-preview-content');
+            fetch('/files/sampleQuestionSet.csv')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    previewContainer.textContent = text;
+                })
+                .catch(error => {
+                    previewContainer.textContent = 'Could not load sample file preview.';
+                    console.error('Error fetching sample CSV:', error);
+                });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/stylesheets/style.css">
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        color: white;
+        /* padding-top: 60px; Adjust for navbar height */
+        background-image: url("/images/lobby.jpg");
+        /* image path */
+        background-size: cover;
+        /* Ensures the image covers the entire background */
+        background-position: center;
+        /* Centers the image */
+        background-repeat: no-repeat;
+        /* Prevents the image from repeating */
+        background-attachment: fixed;
+        /* Keeps
+       the background fixed during scroll */
+      }
+    </style>
+</head>
+<body>
+    <div class="container vh-100 d-flex justify-content-center align-items-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h1 class="h4 mb-0 text-center"><%= title %></h1>
+                </div>
+                <div class="card-body p-4" id="mainContent">
+                    <form id="joinForm">
+                        <div class="mb-3">
+                            <label for="teamName" class="form-label">Enter Your Team Name</label>
+                            <input type="text" class="form-control" id="teamName" name="teamName" required autofocus>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Join Game</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const gameId = "<%= gameId %>";
+        const joinForm = document.getElementById('joinForm');
+        const mainContent = document.getElementById('mainContent');
+        let teamName = '';
+
+        joinForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const teamNameInput = document.getElementById('teamName');
+            teamName = teamNameInput.value.trim();
+
+            if (teamName) {
+                // Store teamName in sessionStorage to retrieve it on the next page
+                sessionStorage.setItem('teamName', teamName);
+
+                // Emit an event to the server to join the game
+                socket.emit('teamJoin', { gameId, teamName });
+
+                // Replace the form with a waiting/ready screen
+                mainContent.innerHTML = `
+                    <div >
+                        <h5 class="mb-3 text-center">Welcome, team <strong>${teamName}</strong>!</h5>
+                        <p class="text-center">How to play:</p>
+                        <p>1. A question with 4 options would be presented to all teams.</p>
+                        <p>2. If you know the answer, Click "Answer" Button.</p>
+                        <p>3. First team to click "Answer" Button would be able to select an options and submit the answer.</p>
+                        <p>4. If you answer correctly, you get 10 points. Facilitator will present a new question. </p>
+                        <p>5. If you answer incorrectly, you lose 5 points and other teams can click "Answer" Button to answer.</p>
+
+
+                        <p class="text-muted">You are in the lobby. Please click "We're Ready" when your team is prepared to start.</p>
+                        <p class="text-center">Waiting for other teams to join...</p>
+                        <div class="d-grid">
+                            <button id="readyBtn" class="btn btn-lg btn-warning">We're Ready!</button>
+                        </div>
+                    </div>
+                `;
+
+                const readyBtn = document.getElementById('readyBtn');
+                readyBtn.addEventListener('click', () => {
+                    socket.emit('teamReady', { gameId, teamName });
+                    readyBtn.textContent = 'Ready!';
+                    readyBtn.classList.remove('btn-warning');
+                    readyBtn.classList.add('btn-success');
+                    readyBtn.disabled = true;
+                });
+            }
+            
+            // Listen for the game to start, then redirect
+            socket.on('gameStarted', (data) => {
+                // Redirect the player to the game screen
+                window.location.href = `/game/play/${data.gameId}`;
+            });
+        });
+    </script>
+</body>
+</html>

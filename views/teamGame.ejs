@@ -1,0 +1,55 @@
+<!-- teamGame.ejs -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game In Progress</title>
+    <!-- Include the Socket.IO client library -->
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <h1>Game: <%= game.clientName %></h1>
+    <h2 id="team-name">Team: <%= teamName %></h2>
+    <div id="scores"></div>
+    <div id="question-area"></div>
+    <div id="answer-area"></div>
+
+    <script>
+        const socket = io();
+        const gameId = "<%= game.gameId %>";
+        const teamName = "<%= teamName %>";
+
+        // 1. Join the game room
+        socket.emit('teamJoin', { gameId, teamName });
+
+        // 2. Listen for game state updates
+        socket.on('updateGameState', (game) => {
+            // Update scores, status, etc. on the page
+            const scoresDiv = document.getElementById('scores');
+            scoresDiv.innerHTML = '<h3>Scores</h3>' +
+                game.teams.map(t => `<p>${t.name}: ${t.score}</p>`).join('');
+        });
+
+        // 3. Listen for new questions
+        socket.on('newQuestion', ({ question }) => {
+            const questionArea = document.getElementById('question-area');
+            questionArea.innerHTML = `<h3>${question.questionText}</h3>`;
+            // Render options, etc.
+        });
+
+        // 4. Listen for who is answering
+        socket.on('answerLock', ({ answeringTeamName }) => {
+            // Logic to disable/enable answer buttons based on who is answering
+            if (answeringTeamName) {
+                console.log(`${answeringTeamName} is answering!`);
+            } else {
+                console.log('Answer is open!');
+            }
+        });
+
+        // Function to be called by an "Answer" button
+        function attemptToAnswer() {
+            socket.emit('answerAttempt', { gameId, teamName });
+        }
+    </script>
+</body>
+</html>

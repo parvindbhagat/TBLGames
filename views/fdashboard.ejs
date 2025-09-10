@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Question Set</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/stylesheets/style.css">
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        color: white;
+        /* padding-top: 60px; Adjust for navbar height */
+        background-image: url("/images/facHome.jpg");
+        /* image path */
+        background-size: cover;
+        /* Ensures the image covers the entire background */
+        background-position: center;
+        /* Centers the image */
+        background-repeat: no-repeat;
+        /* Prevents the image from repeating */
+        background-attachment: fixed;
+        /* Keeps
+       the background fixed during scroll */
+      }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <nav class="nav justify-content-end mb-4">
+            <a class="nav-link text-white" href="/facilitator/games">Games</a>
+            <a class="nav-link text-white" href="/facilitator">Home</a>
+            <a class="nav-link text-white" href="/auth/logout">Logout</a>
+        </nav>
+    </div>
+    <div class="container "></div>
+        <h1 class="text-center text-white ">Welcome to Intervention Games!</h1>
+        <!-- <a href="/facilitator/game-setup">Setup a New Game</a>
+        <a href="/facilitator/question-sets">View Question Sets</a> -->
+
+    <div class="container d-flex justify-content-center mt-4">
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">Game Setup</h5>
+                        <p class="card-text">   
+                            Setup a new Game for Facilitators and launch to start engagement in realtime.</p>
+                        <a href="/facilitator/game-setup" class="btn btn-primary">Setup a new Game</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4"> 
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title   ">View Question Sets</h5>
+                        <p class="card-text">
+                            Take a look at available Questions sets for you, prepare the quiz with one of the questions sets.</p>
+                        <a href="/facilitator/question-sets" class="btn btn-primary mt-auto">View Question Sets</a>
+                    </div>
+                </div>                  
+            </div>   
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
+</body>
+</html>

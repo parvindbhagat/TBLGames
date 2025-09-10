@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    />
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        color: white;
+        /* padding-top: 60px; Adjust for navbar height */
+        background-image: url("/images/pGameView.jpg");
+        /* image path */
+        background-size: cover;
+        /* Ensures the image covers the entire background */
+        background-position: center;
+        /* Centers the image */
+        background-repeat: no-repeat;
+        /* Prevents the image from repeating */
+        background-attachment: fixed;
+        /* Keeps
+       the background fixed during scroll */
+      }
+      .game-view {
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 2rem;
+      text-align: center;
+      /* color: white; */
+      }
+    </style>
+  </head>
+  <body class="d-flex justify-content-center align-items-center vh-100">
+    <div class="game-view container mt-5">
+      <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+          <div class="card text-center">
+            <div class="card-header">
+              <h5 id="questionHeader">Question <%= game.currentQuestionIndex + 1 %> of <%= game.questions.length %></h5>
+            </div>
+            <div class="card-body p-4">
+              <h2 id="questionText" class="mb-4">Loading question...</h2>
+              <div id="optionsContainer" class="list-group mb-4">
+                <!-- Options will be populated here -->
+              </div>
+              <div id="actionContainer" class="d-grid">
+                <button id="answerBtn" class="btn btn-lg btn-primary">
+                  Answer
+                </button>
+              </div>
+              <div
+                id="answerStatus"
+                class="alert mt-4"
+                style="display: none"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+              const socket = io();
+              const gameId = "<%= game.gameId %>";
+              // Retrieve teamName from sessionStorage
+              const teamName = sessionStorage.getItem('teamName');
+              const totalQuestions = <%= game.questions.length %>;
+
+              socket.on('connect', () => {
+                  console.log('Connected to server with ID:', socket.id);
+                  // Identify this client to the server so it can be re-associated with the team
+                  socket.emit('playerConnect', { gameId, teamName });
+              });
+
+              const questionTextEl = document.getElementById('questionText');
+              const optionsContainerEl = document.getElementById('optionsContainer');
+              const actionContainerEl = document.getElementById('actionContainer');
+              const answerBtn = document.getElementById('answerBtn');
+              const answerStatusEl = document.getElementById('answerStatus');
+              let currentQuestion = <%- JSON.stringify(game.questions[0] || null) %>;
+
+              // 1. Display the first question
+              if (currentQuestion) {
+                  displayQuestion(currentQuestion, false); // Display initial question
+              }
+
+              // 2. Handle clicking the "Answer" button
+              answerBtn.addEventListener('click', () => {
+                  socket.emit('answerAttempt', { gameId, teamName });
+              });
+
+              // 3. Listen for a team (including this one) locking in an answer
+              socket.on('answerLock', ({ answeringTeamName }) => {
+                  // actionContainerEl.style.display = 'none'; // Hide the answer button
+                  // answerStatusEl.textContent = `${answeringTeamName} is answering...`;
+                  // answerStatusEl.style.display = 'block';
+                  actionContainerEl.innerHTML = ''; // Clear the Answer button
+
+                  if (answeringTeamName === teamName) {
+                      // This team can now select an answer
+                      // We will implement this logic next
+                      // console.log("It's our turn to answer!");
+                      answerStatusEl.className = 'alert alert-info mt-4';
+                      answerStatusEl.textContent = 'Your turn! Please select an option.';
+                      answerStatusEl.style.display = 'block';
+                      displayQuestion(currentQuestion, true); // Re-render options as clickable
+                  } else {
+                      // Other teams see who is answering
+                      answerStatusEl.className = 'alert alert-info mt-4';
+                      answerStatusEl.textContent = `${answeringTeamName} is answering...`;
+                      answerStatusEl.style.display = 'block';
+                  }
+              });
+
+                      // 4. Listen for the result of an answer submission
+              socket.on('answerResult', ({ teamName: answeringTeam, wasCorrect, openForNextAnswer }) => {
+                  if (wasCorrect) {
+                      answerStatusEl.className = 'alert alert-success mt-4';
+                      answerStatusEl.textContent = `${answeringTeam} answered correctly!`;
+                      // Options remain unclickable, waiting for facilitator
+                      displayQuestion(currentQuestion, false);
+                  } else {
+                      answerStatusEl.className = 'alert alert-danger mt-4';
+                      answerStatusEl.textContent = `${answeringTeam} answered incorrectly.`;
+                      if (openForNextAnswer) {
+                          // Reset for the next team to buzz in
+                          setTimeout(() => {
+                              answerStatusEl.style.display = 'none';
+                              actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-primary">Answer</button>';
+                              document.getElementById('answerBtn').addEventListener('click', () => {
+                                  socket.emit('answerAttempt', { gameId, teamName });
+                              });
+                              displayQuestion(currentQuestion, false);
+                          }, 2500); // Show result for 2.5 seconds
+                      }
+                  }
+                  answerStatusEl.style.display = 'block';
+              });
+
+              // 5. Listen for the next question from the facilitator
+              socket.on('newQuestion', ({ question, questionIndex }) => {
+                  currentQuestion = question;
+                  document.getElementById('questionHeader').textContent = `Question ${questionIndex + 1} of ${totalQuestions}`;
+                  displayQuestion(question, false);
+                  answerStatusEl.style.display = 'none';
+                  actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-primary">Answer</button>';
+                  document.getElementById('answerBtn').addEventListener('click', () => {
+                      socket.emit('answerAttempt', { gameId, teamName });
+                  });
+              });
+
+              // Listen for state updates upon reconnecting
+              socket.on('reconnectState', ({ question, questionIndex }) => {
+                  console.log('Received reconnect state, updating view.');
+                  currentQuestion = question;
+                  document.getElementById('questionHeader').textContent = `Question ${questionIndex + 1} of ${totalQuestions}`;
+                  displayQuestion(question, false); // Display current question, options not clickable yet
+              });
+
+              // Listen for the game to end
+              socket.on('gameOver', (game) => {
+                  const container = document.querySelector('.container');
+                  const winnerScore = game.teams.length > 0 ? game.teams[0].score : -Infinity;
+
+                  let finalViewHtml = `
+                      <div class="card text-center">
+                          <div class="card-header">
+                              <h1 class="display-4">Game Over!</h1>
+                          </div>
+                          <div class="card-body p-4">
+                              <h2 class="mb-4">Final Scoreboard</h2>
+                              <ul class="list-group">
+                  `;
+
+                  game.teams.forEach(team => {
+                      const isWinner = team.score === winnerScore;
+                      finalViewHtml += `
+                          <li class="list-group-item d-flex justify-content-between align-items-center fs-4 ${isWinner ? 'list-group-item-success' : ''}">
+                              <span>
+                                  ${team.name}
+                                  ${isWinner ? '<span class="badge bg-warning text-dark ms-2">Winner!</span>' : ''}
+                              </span>
+                              <span class="badge bg-primary rounded-pill">${team.score}</span>
+                          </li>`;
+                  });
+                  finalViewHtml += `</ul></div></div>`;
+                  container.innerHTML = finalViewHtml;
+              });
+              // function displayQuestion(question)
+
+              function displayQuestion(question, isAnswering) {
+          questionTextEl.textContent = question.questionText;
+          optionsContainerEl.innerHTML = '';
+          let selectedAnswer = null;
+          let selectedElement = null;
+
+          question.options.forEach((option, index) => {
+              const el = document.createElement(isAnswering ? 'button' : 'div');
+              el.className = 'list-group-item';
+              if (isAnswering) {
+                  el.classList.add('list-group-item-action');
+                  el.onclick = () => {
+                      // Remove 'active' from all buttons
+                      optionsContainerEl.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                      // Add 'active' to the clicked button
+                      el.classList.add('active');
+                      selectedAnswer = option;
+                      selectedElement = el;
+                      // Enable submit button only if an option is selected
+                      submitBtn.disabled = false;
+                  };
+              }
+              el.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+              optionsContainerEl.appendChild(el);
+          });
+
+          if (isAnswering) {
+              actionContainerEl.innerHTML = '<button id="submitBtn" class="btn btn-lg btn-success" disabled>Submit Answer</button>';
+              const submitBtn = document.getElementById('submitBtn');
+              submitBtn.addEventListener('click', () => {
+                  if (selectedAnswer !== null) {
+                      socket.emit('submitAnswer', { gameId, teamName, answer: selectedAnswer });
+                      actionContainerEl.innerHTML = '';
+                  }
+              });
+            }
+        }
+
+              function selectOption(selectedElement, selectedAnswer) {
+                  const allOptions = optionsContainerEl.querySelectorAll('button');
+                  allOptions.forEach(btn => {
+                      btn.disabled = true;
+                      btn.classList.remove('active');
+                  });
+
+                  selectedElement.classList.add('active');
+
+                  actionContainerEl.innerHTML = '<button id="submitBtn" class="btn btn-lg btn-success">Submit Answer</button>';
+                  document.getElementById('submitBtn').addEventListener('click', () => {
+                      socket.emit('submitAnswer', { gameId, teamName, answer: selectedAnswer });
+                      actionContainerEl.innerHTML = '';
+                  });
+              }
+    </script>
+  </body>
+</html>

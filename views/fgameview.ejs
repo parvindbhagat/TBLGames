@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/stylesheets/style.css">
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        color: white;
+        /* padding-top: 60px; Adjust for navbar height */
+        background-image: url("/images/fGameView.jpg");
+        /* image path */
+        background-size: cover;
+        /* Ensures the image covers the entire background */
+        background-position: center;
+        /* Centers the image */
+        background-repeat: no-repeat;
+        /* Prevents the image from repeating */
+        background-attachment: fixed;
+        /* Keeps
+       the background fixed during scroll */
+      }
+      .game-view {
+      backdrop-filter: blur(10px);
+      /* background-color: rgba(255, 255, 255, 0.2); */
+      border-radius: 15px;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 2rem;
+      text-align: center;
+      color: white;
+    }
+
+    </style>
+</head>
+<body class="d-flex justify-content-center align-items-center vh-100">
+    <div class=" game-view container mt-4">
+        <div class="row">
+            <!-- Main Game Area -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 id="questionHeader">Question <%= game.currentQuestionIndex + 1 %> of <%= game.questions.length %></h5>
+                    </div>
+                    <div class="card-body">
+                        <h3 id="questionText" class="mb-4">Loading question...</h3>
+                        <ul id="optionsList" class="list-group">
+                            <!-- Options will be populated by JS -->
+                        </ul>
+                        <div id="answerStatus" class="alert alert-info mt-4" style="display: none;"></div>
+                    </div>
+                    <div class="card-footer text-end">
+                        <button id="nextQuestionBtn" class="btn btn-primary" disabled>Next Question</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scoreboard -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Scoreboard</h5>
+                    </div>
+                    <ul id="scoreboard" class="list-group list-group-flush">
+                        <% game.teams.sort((a, b) => b.score - a.score).forEach(team => { %>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <%= team.name %>
+                                <span class="badge bg-primary rounded-pill"><%= team.score %></span>
+                            </li>
+                        <% }) %>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        if (!socket.connected) {
+          socket.connect();
+        }
+        const gameId = "<%= game.gameId %>";
+        const totalQuestions = <%= game.questions.length %>;
+        let currentQuestionIndex = <%= game.currentQuestionIndex %>;
+
+        const questionTextEl = document.getElementById('questionText');
+        const optionsListEl = document.getElementById('optionsList');
+        const answerStatusEl = document.getElementById('answerStatus');
+        const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+        const scoreboardEl = document.getElementById('scoreboard');
+
+        // 1. Join the room as a facilitator
+        socket.emit('facilitatorJoin', gameId);
+
+        // 2. Display the first question
+        const initialQuestion = <%- JSON.stringify(game.questions[game.currentQuestionIndex] || null) %>;
+        if (initialQuestion) {
+            displayQuestion(initialQuestion);
+        }
+
+        // 3. Listen for a team locking in an answer
+        socket.on('answerLock', ({ answeringTeamName }) => {
+            answerStatusEl.className = 'alert alert-info mt-4';
+            answerStatusEl.textContent = `${answeringTeamName} is answering...`;
+            answerStatusEl.style.display = 'block';
+        });
+
+        // 4. Listen for answer results
+        socket.on('answerResult', ({ teamName, wasCorrect }) => {
+            if (wasCorrect) {
+                answerStatusEl.className = 'alert alert-success mt-4';
+                answerStatusEl.textContent = `${teamName} answered correctly!`;
+                if (currentQuestionIndex + 1 === totalQuestions) {
+                    nextQuestionBtn.textContent = 'Show Scoreboard';
+                    nextQuestionBtn.classList.remove('btn-primary');
+                    nextQuestionBtn.classList.add('btn-success');
+                }
+                nextQuestionBtn.disabled = false; // Enable the button
+            } else {
+                answerStatusEl.className = 'alert alert-danger mt-4';
+                answerStatusEl.textContent = `${teamName} answered incorrectly. Waiting for next team...`;
+            }
+        });
+
+        // 5. Listen for game state updates to refresh scoreboard
+        socket.on('updateGameState', (game) => {
+            scoreboardEl.innerHTML = '';
+            game.teams.sort((a, b) => b.score - a.score).forEach(team => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.innerHTML = `${team.name} <span class="badge bg-primary rounded-pill">${team.score}</span>`;
+                scoreboardEl.appendChild(li);
+            });
+        });
+
+        // 6. Handle facilitator clicking "Next Question"
+        nextQuestionBtn.addEventListener('click', () => {
+            if (nextQuestionBtn.textContent === 'Show Scoreboard') {
+                socket.emit('endGame', gameId);
+            } else {
+                socket.emit('nextQuestion', gameId);
+            }
+            nextQuestionBtn.disabled = true;
+            answerStatusEl.style.display = 'none';
+        });
+
+        // 7. Listen for new questions from the server
+        socket.on('newQuestion', ({ question, questionIndex }) => {
+            currentQuestionIndex = questionIndex;
+            document.getElementById('questionHeader').textContent = `Question ${questionIndex + 1} of ${totalQuestions}`;
+            nextQuestionBtn.textContent = 'Next Question';
+            nextQuestionBtn.classList.remove('btn-success');
+            nextQuestionBtn.classList.add('btn-primary');
+            displayQuestion(question);
+        });
+
+        // 8. Listen for the game to end
+        socket.on('gameOver', (game) => {
+            const gameViewContainer = document.querySelector('.game-view');
+            const winnerScore = game.teams.length > 0 ? game.teams[0].score : -Infinity;
+
+            let finalViewHtml = `
+                <div class="text-center">
+                    <h1 class="display-4">Game Over!</h1>
+                    <h2 class="mb-4">Final Scoreboard</h2>
+                    <ul class="list-group">
+                    <a href="/facilitator" class="btn btn-primary mt-4">Back to Home</a>
+            `;
+
+            if (game.teams.length > 0) {
+                game.teams.forEach(team => {
+                    const isWinner = team.score === winnerScore;
+                    finalViewHtml += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center fs-4 ${isWinner ? 'list-group-item-success' : ''}">
+                            <span>
+                                ${team.name}
+                                ${isWinner ? '<span class="badge bg-warning text-dark ms-2">Winner!</span>' : ''}
+                            </span>
+                            <span class="badge bg-primary rounded-pill">${team.score}</span>
+                        </li>
+                    `;
+                });
+            }
+            finalViewHtml += `</ul></div>`;
+            gameViewContainer.innerHTML = finalViewHtml;
+        });
+
+        function displayQuestion(question) {
+            questionTextEl.textContent = question.questionText;
+            optionsListEl.innerHTML = '';
+            question.options.forEach((option, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+                optionsListEl.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>

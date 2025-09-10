@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %>></title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/stylesheets/style.css">
+     <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        color: white;
+        /* padding-top: 60px; Adjust for navbar height */
+        background-image: url("/images/adminHome.jpg");
+        /* image path */
+        background-size: cover;
+        /* Ensures the image covers the entire background */
+        background-position: center;
+        /* Centers the image */
+        background-repeat: no-repeat;
+        /* Prevents the image from repeating */
+        background-attachment: fixed;
+        /* Keeps
+       the background fixed during scroll */
+      }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <nav class="nav justify-content-end mb-4">
+            <a class="nav-link text-white" href="/admin/addquestionset">Add a new Questions Set</a>
+            <a class="nav-link text-white" href="/admin/facilitators">Manage Facilitators</a>
+            <a class="nav-link text-white" href="/admin" class="nav-link">Home</a>
+            <a class="nav-link text-white" href="/admin/logout">Logout</a>
+        </nav>
+
+        <div class="question-sets">
+            <h1 class="mb-4"><%= title %> <a href="/admin/addquestionset" class="btn btn-primary btn-sm">Add</a></h1>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                <% if (questionSets.length === 0) { %>
+                    <div class="col">
+                        <p class="text-muted">No question sets found. <a href="/admin/addquestionset">Add one now</a>.</p>
+                    </div>
+                <% } else { %>
+                    <% questionSets.forEach(function(set) { %>
+                        <div class="col">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body d-flex flex-column">
+                                    <h5 class="card-title font-weight-bold"><%= set.name %></h5>
+                                    <p class="card-text text-muted flex-grow-1"><%= set.description %></p>
+                                    <p class="card-text"><small><strong>Accessible By:</strong> <%= set.accessibleBy.join(', ') %></small></p>
+                                    <p class="card-text mt-auto pt-2"><strong>Questions:</strong> <span class="badge bg-secondary rounded-pill"><%= set.numberOfQuestions %></span></p>
+                                </div>
+                                <div class="card-footer bg-transparent border-top-0 text-end">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#questionsModal" data-set-name="<%- set.name %>" data-set-id="<%- set._id %>">
+                                        Show All Questions
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="questionsModal" tabindex="-1" aria-labelledby="questionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="questionsModalLabel">Questions</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Questions will be injected here by JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
+    <script>
+        const questionsModal = document.getElementById('questionsModal');
+        if (questionsModal) {
+            questionsModal.addEventListener('show.bs.modal', async (event) => {
+                const button = event.relatedTarget;
+                const setName = button.getAttribute('data-set-name');
+                const setId = button.getAttribute('data-set-id');
+
+                const modalTitle = questionsModal.querySelector('.modal-title');
+                const modalBody = questionsModal.querySelector('.modal-body');
+
+                modalTitle.textContent = `Questions for: ${setName}`;
+                // Show a loading spinner while fetching data
+                modalBody.innerHTML = `
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>`;
+
+                try {
+                    const response = await fetch(`/admin/questions/${setId}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const questions = await response.json();
+
+                    if (questions && questions.length > 0) {
+                        let questionList = '<ol class="list-group list-group-numbered">';
+                        questions.forEach(q => {
+                            questionList += `<li class="list-group-item">${q.questionText || 'Question text not found'}</li>`;
+                        });
+                        questionList += '</ol>';
+                        modalBody.innerHTML = questionList;
+                    } else {
+                        modalBody.innerHTML = '<p class="text-muted">No questions found in this set.</p>';
+                    }
+                } catch (error) {
+                    console.error('Could not load questions:', error);
+                    modalBody.innerHTML = '<div class="alert alert-danger">Could not load questions. Please try again later.</div>';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
