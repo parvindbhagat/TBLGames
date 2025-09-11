@@ -4,24 +4,6 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const User = require('../model/UserModel');
 
-// --- Middleware ---
-// Placeholder for real authentication. In a real app, this would be implemented
-// using sessions or JWTs to verify that the logged-in user is an admin.
-const isAdmin = (req, res, next) => {
-  // For development, we'll assume an admin is making the request.
-  // REPLACE THIS with your actual authentication logic.
-  // For example: if (req.session.user && req.session.user.role === 'admin')
-  // req.user = { role: 'admin', name: 'System Admin' };  // development only
-  req.user = req.session.user; // production code
-  if (req.user && req.user.role === 'admin') {
-    return next();
-  }
-  return res.status(403).json({ message: 'Forbidden: Administrator access required.' });
-};
-
-// Apply the isAdmin middleware to all routes in this router.
-router.use(isAdmin);
-
 // --- Routes ---
 
 /**

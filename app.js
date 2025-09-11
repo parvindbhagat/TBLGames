@@ -1,10 +1,10 @@
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
-var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const mongoose = require('mongoose');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 
 var app = express();
 
@@ -14,13 +14,19 @@ var usersRouter = require('./routes/users');
 var facilitatorRouter = require('./routes/facilitator');
 var gameRouter = require('./routes/game');
 // In app.js, after your `var app = express()` line
-
-app.use(session({
+app.set('trust proxy', 1) // trust first proxy for secure cookies in production
+app.use(session({ 
   secret: process.env.SESSION_SECRET || 'a-bad-secret-for-development',
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/intervention-games-db',
+    collectionName: 'sessions'
+  }),
   cookie: {
-    secure: process.env.NODE_ENV === 'production' // Use true in production for HTTPS
+    secure: process.env.NODE_ENV === 'production', // Use true in production for HTTPS
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 // 1 day
   }
 }));
 
@@ -38,8 +44,7 @@ app.set('view engine', 'ejs');
 
 app.use(logger('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);

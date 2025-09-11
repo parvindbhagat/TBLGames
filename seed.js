@@ -5,7 +5,7 @@ const User = require('./model/UserModel');
 
 // --- Configuration ---
 // It's crucial to use environment variables for sensitive data
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://mongo:27017/intervention-games-db';
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/intervention-games-db';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@example.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ChangeMe123!';
 

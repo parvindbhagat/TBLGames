@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
 const QuestionSet = require('../model/QuestionSetModel');
+const usersRouter = require('./users'); // Import the users router
 const { stat } = require('fs');
 
 // Middlewares
@@ -14,7 +15,9 @@ const isAdmin = (req, res, next) => {
   // For example: if (req.session.user && req.session.user.role === 'admin')
   // req.user = { role: 'admin', name: 'System Admin' };  // development only
   req.user = req.session.user; // production code
+  console.log('isAdmin middleware - req.session.user:', req.session.user);
   if (req.user && req.user.role === 'admin') {
+    console.log('Admin user:', req.user);
     return next();
   } else {
   return res.status(403).redirect('/login?msg=Forbidden: Administrator access required.');
@@ -30,13 +33,16 @@ router.use(isAdmin);
 // Configure multer for in-memory file storage. This is efficient for small files.
 const upload = multer({ storage: multer.memoryStorage() });
 
-/**
+/** 
  * GET /admin
  * Renders the admin home page.
  */
 router.get('/', (req, res) => {
-    res.render('adminhome', { title: 'Admin Home', userName: req.user.name });
+    res.render('adminhome', { title: 'Admin Home', userName: 'admin' });
 });
+
+// Mount the users router at the /users path
+router.use('/users', usersRouter);
 
 /**
  * GET /admin/questionsets

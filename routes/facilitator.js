@@ -37,7 +37,7 @@ router.get('/game-setup', ensureAuthenticated, async (req, res, next) => {
     try {
         const accessibleSets = await QuestionSet.find({ accessibleBy: req.user.name }).lean();
         // console.log(accessibleSets);
-        res.render('fgameSetup', {
+        res.render('fgamesetup', {
             title: 'Setup New Game',
             questionSets: accessibleSets,
             facilitatorName: req.user.name
