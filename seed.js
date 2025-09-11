@@ -5,13 +5,13 @@ const User = require('./model/UserModel');
 
 // --- Configuration ---
 // It's crucial to use environment variables for sensitive data
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/intervention-games-db';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://mongo:27017/intervention-games-db';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@example.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ChangeMe123!';
 
-if (ADMIN_PASSWORD === 'ChangeMe') {
+if (ADMIN_PASSWORD === 'ChangeMe123!') {
   console.warn(
-    'WARNING: Using default admin password. Please set ADMIN_PASSWORD environment variable for production.'
+    'WARNING: Using default admin password. For production, please set the ADMIN_EMAIL and ADMIN_PASSWORD environment variables.'
   );
 }
 
@@ -41,7 +41,8 @@ const seedAdminUser = async () => {
       name: 'Parvind Bhagat',
       role: 'admin',
       createdBy: 'system',
-      updatedBy: 'system'
+      updatedBy: 'system',
+      isActive: true // Explicitly set the admin user to be active
     });
 
     await adminUser.save();

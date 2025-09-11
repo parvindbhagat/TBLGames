@@ -1,4 +1,6 @@
 node_modules
+reset-admin-password.js
+seed.js
 .env
 Dockerfile
 docker-compose.yml

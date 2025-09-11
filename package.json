@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "seed": "node ./seed.js"
+    "seed": "node ./seed.js",
+    "reset-admin-password": "node ./reset-admin-password.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
