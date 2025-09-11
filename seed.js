@@ -5,9 +5,9 @@ const User = require('./model/UserModel');
 
 // --- Configuration ---
 // It's crucial to use environment variables for sensitive data
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/intervention-games-db';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'parvind.b@chrysalishrd.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ChangeMe';
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/intervention-games-db';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 if (ADMIN_PASSWORD === 'ChangeMe') {
   console.warn(
@@ -48,7 +48,7 @@ const seedAdminUser = async () => {
 
     console.log('Admin user created successfully!');
     console.log(`  Email: ${ADMIN_EMAIL}`);
-    console.log(`  Password:  (This is the initial password, please change it upon first login)`);
+    console.log(`  Password: ${ADMIN_PASSWORD} (This is the initial password, please change it upon first login)`);
 
   } catch (error) {
     console.error('Error during admin user seeding:', error);

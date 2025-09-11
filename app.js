@@ -25,7 +25,7 @@ app.use(session({
 }));
 
 // --- Mongoose/MongoDB Connection ---
-const mongoURI = 'mongodb://localhost:27017/intervention-games-db';
+const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/intervention-games-db';
 
 mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB connection successful.'))

@@ -22,7 +22,7 @@ router.post('/login', async (req, res) => {
   const user = await User.findOne({ email });
 
   // WARNING: This is a simplified example. Add proper error handling.
-  if (user && await bcrypt.compare(password, user.password)) {
+  if (user && user.isActive && await bcrypt.compare(password, user.password)) {
     // Password matches, create the session
     req.session.user = {
       userId: user.userId,
