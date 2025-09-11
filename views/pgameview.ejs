@@ -99,29 +99,6 @@
                   socket.emit('answerAttempt', { gameId, teamName });
               });
 
-              // 3. Listen for a team (including this one) locking in an answer
-              socket.on('answerLock', ({ answeringTeamName }) => {
-                  // actionContainerEl.style.display = 'none'; // Hide the answer button
-                  // answerStatusEl.textContent = `${answeringTeamName} is answering...`;
-                  // answerStatusEl.style.display = 'block';
-                  actionContainerEl.innerHTML = ''; // Clear the Answer button
-
-                  if (answeringTeamName === teamName) {
-                      // This team can now select an answer
-                      // We will implement this logic next
-                      // console.log("It's our turn to answer!");
-                      answerStatusEl.className = 'alert alert-info mt-4';
-                      answerStatusEl.textContent = 'Your turn! Please select an option.';
-                      answerStatusEl.style.display = 'block';
-                      displayQuestion(currentQuestion, true); // Re-render options as clickable
-                  } else {
-                      // Other teams see who is answering
-                      answerStatusEl.className = 'alert alert-info mt-4';
-                      answerStatusEl.textContent = `${answeringTeamName} is answering...`;
-                      answerStatusEl.style.display = 'block';
-                  }
-              });
-
                       // 4. Listen for the result of an answer submission
               socket.on('answerResult', ({ teamName: answeringTeam, wasCorrect, openForNextAnswer }) => {
                   if (wasCorrect) {
@@ -159,13 +136,35 @@
                   });
               });
 
-              // Listen for state updates upon reconnecting
-              socket.on('reconnectState', ({ question, questionIndex }) => {
-                  console.log('Received reconnect state, updating view.');
-                  currentQuestion = question;
-                  document.getElementById('questionHeader').textContent = `Question ${questionIndex + 1} of ${totalQuestions}`;
-                  displayQuestion(question, false); // Display current question, options not clickable yet
+              // Central handler for all game state changes
+              socket.on('updateGameState', (game) => {
+                  console.log('Game state updated:', game);
+                  const answeringTeamName = game.answeringTeamName;
+                  currentQuestion = game.questions[game.currentQuestionIndex];
+
+                  if (answeringTeamName && answeringTeamName !== '__answered__') {
+                      // A team has locked in to answer
+                      actionContainerEl.innerHTML = ''; // Clear the Answer button
+                      if (answeringTeamName === teamName) {
+                          // It's our turn to answer!
+                          answerStatusEl.className = 'alert alert-info mt-4';
+                          answerStatusEl.textContent = 'Your turn! Please select an option.';
+                          answerStatusEl.style.display = 'block';
+                          displayQuestion(currentQuestion, true); // Re-render options as clickable
+                      } else {
+                          // Another team is answering
+                          answerStatusEl.className = 'alert alert-secondary mt-4';
+                          answerStatusEl.textContent = `${answeringTeamName} is answering...`;
+                          answerStatusEl.style.display = 'block';
+                          displayQuestion(currentQuestion, false); // Ensure our options are not clickable
+                      }
+                  } else {
+                      // No one is answering (or question was just answered correctly)
+                      // This state is handled by 'newQuestion' and 'answerResult'
+                  }
               });
+
+
 
               // Listen for the game to end
               socket.on('gameOver', (game) => {

@@ -4,13 +4,25 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const mongoose = require('mongoose');
+const session = require('express-session');
+
+var app = express();
 
 var indexRouter = require('./routes/index');
 var adminRouter = require('./routes/admin');
+var usersRouter = require('./routes/users');
 var facilitatorRouter = require('./routes/facilitator');
 var gameRouter = require('./routes/game');
+// In app.js, after your `var app = express()` line
 
-var app = express();
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'a-bad-secret-for-development',
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production' // Use true in production for HTTPS
+  }
+}));
 
 // --- Mongoose/MongoDB Connection ---
 const mongoURI = 'mongodb://localhost:27017/intervention-games-db';
@@ -32,6 +44,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/admin', adminRouter);
+app.use('/admin/users', usersRouter);
 app.use('/facilitator', facilitatorRouter);
 app.use('/game', gameRouter);
 

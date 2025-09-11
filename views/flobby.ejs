@@ -85,20 +85,34 @@
             } else {
                 game.teams.forEach(team => {
                     const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    li.textContent = team.name;
-                    
-                    const badge = document.createElement('span');
-                    badge.className = 'badge rounded-pill';
-                    if (team.isReady) {
-                        badge.classList.add('bg-success');
-                        badge.textContent = 'Ready';
-                    } else {
-                        badge.classList.add('bg-warning', 'text-dark');
-                        badge.textContent = 'Not Ready';
-                    }
-                    li.appendChild(badge);
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';                    
+
+                    // Use innerHTML to easily construct the content with the button
+                    const statusBadge = team.isReady
+                        ? `<span class="badge rounded-pill bg-success">Ready</span>`
+                        : `<span class="badge rounded-pill bg-warning text-dark">Not Ready</span>`;
+
+                    // Only show the kick button if the game is in the 'lobby' state
+                    const kickButton = game.status === 'lobby'
+                        ? `<button class="btn btn-sm btn-outline-danger kick-btn ms-2" data-team-name="${team.name}" title="Kick ${team.name}">
+                               <i class="bi bi-x-circle"></i>
+                           </button>`
+                        : '';
+
+                    // Note: Using textContent for team.name to prevent any potential XSS issues.
+                    const teamNameSpan = document.createElement('span');
+                    teamNameSpan.textContent = team.name;
+
+                    const controlsDiv = document.createElement('div');
+                    controlsDiv.innerHTML = statusBadge + kickButton;
+
+                    li.appendChild(teamNameSpan);
+                    li.appendChild(controlsDiv);
                     teamList.appendChild(li);
+
+                    // Sanitize team.name before using it in a selector if it contains special characters
+                    const sanitizedTeamName = team.name.replace(/[^a-zA-Z0-9-_]/g, '-');
+                    li.id = `team-${sanitizedTeamName}`;
                 });
             }
 
@@ -110,6 +124,17 @@
             } else {
                 startGameBtn.disabled = true;
                 startGameBtn.textContent = 'Waiting for all teams to be ready...';
+            }
+        });
+
+        // Add a single event listener to the list for handling kick button clicks
+        teamList.addEventListener('click', (event) => {
+            const kickButton = event.target.closest('.kick-btn');
+            if (kickButton) {
+                const teamName = kickButton.dataset.teamName;
+                if (confirm(`Are you sure you want to kick the team "${teamName}"?`)) {
+                    socket.emit('kickTeam', { gameId, teamName });
+                }
             }
         });
 

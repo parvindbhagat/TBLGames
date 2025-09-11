@@ -7,8 +7,25 @@ const { Readable } = require('stream');
 const QuestionSet = require('../model/QuestionSetModel');
 const { stat } = require('fs');
 
+// Middlewares
+const isAdmin = (req, res, next) => {
+  // For development, we'll assume an admin is making the request.
+  // REPLACE THIS with your actual authentication logic.
+  // For example: if (req.session.user && req.session.user.role === 'admin')
+  // req.user = { role: 'admin', name: 'System Admin' };  // development only
+  req.user = req.session.user; // production code
+  if (req.user && req.user.role === 'admin') {
+    return next();
+  } else {
+  return res.status(403).redirect('/login?msg=Forbidden: Administrator access required.');
+  }
+  // return res.status(403).json({ message: 'Forbidden: Administrator access required.' });
+};
 
+// Apply the isAdmin middleware to all routes in this router.
+router.use(isAdmin);
 
+// --- Routes ---
 
 // Configure multer for in-memory file storage. This is efficient for small files.
 const upload = multer({ storage: multer.memoryStorage() });
@@ -18,7 +35,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * Renders the admin home page.
  */
 router.get('/', (req, res) => {
-    res.render('adminhome', { title: 'Admin Home' });
+    res.render('adminhome', { title: 'Admin Home', userName: req.user.name });
 });
 
 /**

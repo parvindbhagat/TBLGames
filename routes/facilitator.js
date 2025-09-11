@@ -7,22 +7,25 @@ const { nanoid } = require('nanoid'); // A great tool for unique IDs. `npm insta
 // Middleware to simulate a logged-in facilitator (replace with your actual auth middleware)
 const ensureAuthenticated = (req, res, next) => {
   // In a real app, you'd get this from a session or token.
-  req.facilitator = {
-    // A mock facilitator name for querying Question Sets
-    name: 'Parvind Bhagat'
-  };
-  next();
+  req.user = req.session.user; 
+  if (req.user) {
+    console.log('Authenticated user:', req.user.name);
+    return next();
+  } else {
+    return res.status(403).redirect('/login?msg=Forbidden: Access required.');
+  }
 };
 
 /* GET facilitator home page. */
 router.get('/', ensureAuthenticated, async (req, res, next) => {
   try {
     // Find question sets where the facilitator's name is in the 'accessibleBy' array
-    const accessibleSets = await QuestionSet.find({ accessibleBy: req.facilitator.name }).lean();
+    const accessibleSets = await QuestionSet.find({ accessibleBy: req.user.name }).lean();
 
     res.render('fdashboard', {
       title: 'Facilitator Dashboard',
-      questionSets: accessibleSets
+      questionSets: accessibleSets,
+      facilitatorName: req.user.name
     });
   } catch (error) {
     next(error);
@@ -32,11 +35,12 @@ router.get('/', ensureAuthenticated, async (req, res, next) => {
 /* GET game setup form. */
 router.get('/game-setup', ensureAuthenticated, async (req, res, next) => {
     try {
-        const accessibleSets = await QuestionSet.find({ accessibleBy: req.facilitator.name }).lean();
+        const accessibleSets = await QuestionSet.find({ accessibleBy: req.user.name }).lean();
         console.log(accessibleSets);
         res.render('fgameSetup', {
             title: 'Setup New Game',
-            questionSets: accessibleSets
+            questionSets: accessibleSets,
+            facilitatorName: req.user.name
         });
     } catch (error) {
         next(error);
@@ -67,7 +71,7 @@ router.post('/game-setup', ensureAuthenticated, async (req, res, next) => {
             numberOfTeams: numTeams,
             questionSet: questionSetId,
             questions: selectedQuestions,
-            facilitator: req.facilitator._id // Assuming you have the facilitator's ID
+            facilitator: req.user._id
         });
 
         await newGame.save();

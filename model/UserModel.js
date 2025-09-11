@@ -4,10 +4,12 @@ const Schema = mongoose.Schema;
 const UserSchema = new Schema({
     userId: { type: String, default: uuidv4, required: true, unique: true },
     name: { type: String, required: true },
-    username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    role: { type: String, enum: ['admin', 'facilitator', 'user'], default: 'user' }
+    isActive: { type: Boolean, default: true },
+    role: { type: String, enum: ['admin', 'facilitator'], default: 'facilitator' },
+    createdBy: { type: String },
+    updatedBy: { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -1,5 +1,20 @@
 const Game = require('./model/GameModel');
 
+/**
+ * Ends a game, sorts the teams by score, and broadcasts the final state.
+ * @param {import('mongoose').Document & typeof Game} game The game document to end.
+ * @param {import('socket.io').Server} io The Socket.IO server instance.
+ */
+async function endAndBroadcastGame(game, io) {
+    if (!game || game.status === 'finished') return;
+    game.status = 'finished';
+    await game.save();
+    const finalGame = game.toObject();
+    finalGame.teams.sort((a, b) => b.score - a.score);
+    io.to(game.gameId).emit('gameOver', finalGame);
+    console.log(`Game '${game.gameId}' has ended.`);
+}
+
 function initialize(io) {
     io.on('connection', (socket) => {
         console.log('A user connected:', socket.id);
@@ -19,6 +34,7 @@ function initialize(io) {
                 if (game && team) {
                     team.socketId = socket.id; // Update team's socket ID
                     await game.save();
+                    socket.gameInfo = { gameId, teamName }; // Store info for disconnect handling
                     socket.join(gameId); // Ensure socket is in the game room
                     console.log(`Team '${teamName}' reconnected to game '${gameId}' with socket ID '${socket.id}'`);
                     io.to(gameId).emit('updateGameState', game.toObject()); // Update everyone
@@ -33,6 +49,7 @@ function initialize(io) {
         socket.on('facilitatorJoin', async (gameId) => {
             try {
                 socket.join(gameId);
+                socket.gameInfo = { gameId, isFacilitator: true }; // Store info for disconnect handling
                 console.log(`Facilitator joined room: ${gameId}`);
                 // Optionally send back the current game state
                 const game = await Game.findOne({ gameId }).lean();
@@ -47,29 +64,49 @@ function initialize(io) {
         // A team joins the game
         socket.on('teamJoin', async ({ gameId, teamName }) => {
             try {
-                const game = await Game.findOne({ gameId });
+                const newTeam = {
+                    name: teamName,
+                    score: 0,
+                    isReady: false,
+                    socketId: socket.id
+                };
 
-                // Prevent duplicate team names
-                if (game && game.teams.some(t => t.name === teamName)) {
-                    socket.emit('joinError', 'A team with this name has already joined.');
-                    return;
-                }
+                // Use an atomic findAndModify operation to prevent race conditions.
+                const updatedGame = await Game.findOneAndUpdate(
+                    {
+                        gameId: gameId,
+                        'teams.name': { $ne: teamName }, // Condition: team name must not already exist in the array.
+                        // Condition: number of teams must be less than the allowed number.
+                        // We use $expr to compare two fields from the same document.
+                        $expr: { $lt: [{ $size: '$teams' }, '$numberOfTeams'] }
+                    },
+                    {
+                        $push: { teams: newTeam } // Action: add the new team to the array.
+                    },
+                    {
+                        new: true, // Option: return the document after the update.
+                        runValidators: true // Option: ensure our subdocument schema rules are applied.
+                    }
+                );
 
-                if (game && game.teams.length < game.numberOfTeams) {
+                if (updatedGame) {
+                    // The update was successful, meaning all conditions were met atomically.
                     socket.join(gameId);
-                    const newTeam = {
-                        name: teamName,
-                        score: 0,
-                        isReady: false,
-                        socketId: socket.id
-                    };
-                    game.teams.push(newTeam);
-                    await game.save();
-                    // Broadcast the new game state to everyone in the room
-                    io.to(gameId).emit('updateGameState', game.toObject());
+                    socket.gameInfo = { gameId, teamName };
+                    io.to(gameId).emit('updateGameState', updatedGame.toObject());
                 } else {
-                    // Handle error: room full or not found
-                    socket.emit('joinError', 'Room is full or does not exist.');
+                    // The update failed, which means one of our conditions was not met.
+                    // We can now safely query the game to find out why and give a specific error.
+                    const game = await Game.findOne({ gameId }).lean(); // .lean() for a fast, read-only query
+                    if (!game) {
+                        socket.emit('joinError', 'Game does not exist.');
+                    } else if (game.teams.some(t => t.name === teamName)) {
+                        socket.emit('joinError', 'A team with this name has already joined.');
+                    } else if (game.teams.length >= game.numberOfTeams) {
+                        socket.emit('joinError', 'This game is already full.');
+                    } else {
+                        socket.emit('joinError', 'An unknown error occurred while trying to join.');
+                    }
                 }
             } catch (error) {
                 console.error(`Error during teamJoin for game ${gameId}:`, error);
@@ -115,13 +152,21 @@ function initialize(io) {
         socket.on('answerAttempt', async ({ gameId, teamName }) => {
             try {
                 const game = await Game.findOne({ gameId });
-                // Only allow an attempt if the game is in progress and no one else is answering
-                if (game && game.status === 'in-progress' && !game.answeringTeamName) {
+
+                // **SECURITY FIX**: Check if the team is a legitimate participant before proceeding.
+                const isLegitTeam = game && game.teams.some(t => t.name === teamName);
+
+                if (!isLegitTeam) {
+                    console.warn(`Unauthorized answer attempt by non-existent team '${teamName}' in game '${gameId}'.`);
+                    return; // Ignore the attempt
+                }
+
+                // Only allow an attempt if the game is in progress, no one else is answering, and the team is valid.
+                if (game.status === 'in-progress' && !game.answeringTeamName) {
                     game.answeringTeamName = teamName;
                     await game.save();
 
-                    // Notify all clients that a team has locked in to answer
-                    io.to(gameId).emit('answerLock', { answeringTeamName: teamName });
+                    io.to(gameId).emit('updateGameState', game.toObject());
                 }
             } catch (error) {
                 console.error(`Error on answer attempt for game ${gameId}:`, error);
@@ -174,12 +219,7 @@ function initialize(io) {
                 game.answeringTeamName = null;
 
                 if (game.currentQuestionIndex >= game.questions.length) {
-                    game.status = 'finished';
-                    await game.save();
-                    // Sort teams by score before sending the final state
-                    const finalGame = game.toObject();
-                    finalGame.teams.sort((a, b) => b.score - a.score);
-                    io.to(gameId).emit('gameOver', finalGame);
+                    await endAndBroadcastGame(game, io);
                 } else {
                     await game.save();
                     const nextQuestion = game.questions[game.currentQuestionIndex];
@@ -196,12 +236,7 @@ function initialize(io) {
             try {
                 const game = await Game.findOne({ gameId });
                 if (game) {
-                    game.status = 'finished';
-                    await game.save();
-                    // Sort teams by score before sending the final state
-                    const finalGame = game.toObject();
-                    finalGame.teams.sort((a, b) => b.score - a.score);
-                    io.to(gameId).emit('gameOver', finalGame);
+                    await endAndBroadcastGame(game, io);
                 }
             } catch (error) {
                 console.error(`Error ending game ${gameId}:`, error);
@@ -209,8 +244,65 @@ function initialize(io) {
             }
         });
 
-        socket.on('disconnect', () => {
+        // Facilitator kicks a team from the lobby
+        socket.on('kickTeam', async ({ gameId, teamName }) => {
+            try {
+                const game = await Game.findOne({ gameId });
+
+                // Security check: Only allow kicking during the lobby phase.
+                if (game && game.status === 'lobby') {
+                    const teamIndex = game.teams.findIndex(t => t.name === teamName);
+
+                    if (teamIndex > -1) {
+                        const kickedTeam = game.teams[teamIndex];
+                        game.teams.splice(teamIndex, 1); // Remove the team from the array
+                        await game.save();
+
+                        // Notify everyone in the room about the updated game state
+                        io.to(gameId).emit('updateGameState', game.toObject());
+
+                        // Specifically notify the kicked player's socket
+                        if (kickedTeam.socketId) {
+                            const kickedSocket = io.sockets.sockets.get(kickedTeam.socketId);
+                            if (kickedSocket) {
+                                // Forcefully disconnect the user. This is more robust than just leaving a room.
+                                kickedSocket.emit('kicked', { reason: 'You have been removed from the game by the facilitator.' });
+                                kickedSocket.disconnect(true);
+                            }
+                        }
+                        console.log(`Team '${teamName}' was kicked from game '${gameId}' by the facilitator.`);
+                    }
+                }
+            } catch (error) {
+                console.error(`Error kicking team ${teamName} from game ${gameId}:`, error);
+                socket.emit('gameError', 'An error occurred while trying to kick the team.');
+            }
+        });
+
+        socket.on('disconnect', async () => {
             console.log('User disconnected:', socket.id);
+            // If the socket had game info, a player or facilitator disconnected.
+            if (socket.gameInfo && socket.gameInfo.gameId && socket.gameInfo.teamName) {
+                try {
+                    const { gameId, teamName } = socket.gameInfo;
+                    const game = await Game.findOne({ gameId });
+
+                    if (!game) return;
+
+                    const team = game.teams.find(t => t.name === teamName);
+
+                    // Only clear the socketId if it matches the one that just disconnected.
+                    // This prevents a race condition where a quick reconnect happens before the disconnect is processed.
+                    if (team && team.socketId === socket.id) {
+                        team.socketId = null; // Mark as disconnected
+                        await game.save();
+                        io.to(gameId).emit('updateGameState', game.toObject());
+                        console.log(`Team '${teamName}' disconnected from game '${gameId}'.`);
+                    }
+                } catch (error) {
+                    console.error('Error during disconnect cleanup:', error);
+                }
+            }
         });
     });
 }

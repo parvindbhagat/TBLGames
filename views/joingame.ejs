@@ -105,6 +105,15 @@
                 window.location.href = `/game/play/${data.gameId}`;
             });
         });
+
+        // In the player's client-side JavaScript
+
+        socket.on('kicked', (data) => {
+        alert(data.reason || 'You have been removed from the game.');
+        // Redirect to the home page after being kicked
+        window.location.href = '/'; 
+        });
+
     </script>
 </body>
 </html>
