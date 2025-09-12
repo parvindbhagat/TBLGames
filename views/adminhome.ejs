@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Games Admin Home</title>
+    <title>Admin Console</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="/stylesheets/style.css">
      <style>
@@ -25,6 +25,10 @@
         /* Keeps
        the background fixed during scroll */
       }
+      .card-body {
+        background-color: #E95757;
+        color: white;
+      }
     </style>
 </head>
 <body>
@@ -38,7 +42,7 @@
     </div>
     <div class="container ">
         <h1><%= title %></h1>
-        <p>Welcome to the Admin Home Page!</p>   
+        <p>Welcome to the Admin Console! This console allows facilitators and administrators to configure and manage games within the Chrysalis Game Arena. It also provides access to a variety of reports and data insights to support analysis, track engagement, and enhance learning outcomes.</p>   
     </div>
     <div class="container">
         <div class="row">
@@ -48,7 +52,7 @@
                         <h5 class="card-title">Manage Facilitators</h5>
                         <p class="card-text">   
                             View Existing Facilitators, Add New Facilitators and Manage Facilitators access to question sets</p>
-                        <a href="/admin/users" class="btn btn-primary">Manage Facilitators</a>
+                        <a href="/admin/users" class="btn btn-tbl">Manage Facilitators</a>
                     </div>
                 </div>
             </div>
@@ -58,7 +62,7 @@
                         <h5 class="card-title   ">Manage Question Sets</h5>
                         <p class="card-text">
                             Take a look at existing Questions sets, Add new Question Set and Manage question sets.</p>
-                        <a href="/admin/questionsets" class="btn btn-primary mt-auto">View Question Sets</a>
+                        <a href="/admin/questionsets" class="btn btn-tbl mt-auto">View Question Sets</a>
                     </div>
                 </div>                  
             </div>  

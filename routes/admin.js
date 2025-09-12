@@ -15,9 +15,9 @@ const isAdmin = (req, res, next) => {
   // For example: if (req.session.user && req.session.user.role === 'admin')
   // req.user = { role: 'admin', name: 'System Admin' };  // development only
   req.user = req.session.user; // production code
-  console.log('isAdmin middleware - req.session.user:', req.session.user);
+//   console.log('isAdmin middleware - req.session.user:', req.session.user);
   if (req.user && req.user.role === 'admin') {
-    console.log('Admin user:', req.user);
+    // console.log('Admin user:', req.user);
     return next();
   } else {
   return res.status(403).redirect('/login?msg=Forbidden: Administrator access required.');
@@ -38,7 +38,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * Renders the admin home page.
  */
 router.get('/', (req, res) => {
-    res.render('adminhome', { title: 'Admin Home', userName: 'admin' });
+    res.render('adminhome', { title: 'Admin Console', userName: req.user.name });
 });
 
 // Mount the users router at the /users path
@@ -124,10 +124,17 @@ router.post('/addquestionset', upload.single('questionsCsv'), (req, res) => {
     const questions = [];
     const csvData = [];
 
-    // Create a readable stream from the file buffer to pipe into the CSV parser
-    const bufferStream = Readable.from(req.file.buffer);
+    // Decode the file buffer to a UTF-8 string and remove the BOM (Byte Order Mark) if present.
+    // Excel often adds a BOM to UTF-8 CSV files, which can cause parsing issues.
+    let fileContent = req.file.buffer.toString('utf8');
+    if (fileContent.charCodeAt(0) === 0xFEFF) {
+        fileContent = fileContent.slice(1);
+    }
 
-    bufferStream
+    // Create a readable stream from the cleaned string to pipe into the CSV parser.
+    const readableStream = Readable.from(fileContent);
+
+    readableStream
         .pipe(csv())
         .on('data', (data) => csvData.push(data))
         .on('error', (err) => {

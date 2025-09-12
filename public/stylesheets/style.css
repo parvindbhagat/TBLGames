@@ -13,5 +13,15 @@ html, body{
   box-sizing: border-box;
 }
 a {
-  color: #00B7FF;
+  color: #089ec4;
+}
+
+.btn-tbl {
+  background-color: #0DADB5;
+  color: white;
+  border: none;
+}
+.btn-tbl:hover {
+  background-color: #FCB22B;
+  color: white;
 }

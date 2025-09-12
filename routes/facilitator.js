@@ -9,7 +9,7 @@ const ensureAuthenticated = (req, res, next) => {
   // In a real app, you'd get this from a session or token.
   req.user = req.session.user; 
   if (req.user) {
-    console.log('Authenticated user:', req.user.name);
+    // console.log('Authenticated user:', req.user.name);
     return next();
   } else {
     return res.status(403).redirect('/login?msg=Forbidden: Access required.');
