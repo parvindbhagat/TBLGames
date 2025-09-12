@@ -4,15 +4,9 @@
     <title><%= title %></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
     <link rel='stylesheet' href='/stylesheets/style.css' />
-     <style>
+    <style>
       body {
-        margin: 0;
-        padding: 0;
-        background-color: #f0f0f0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+
         height: 100vh;
         /* padding-top: 60px; Adjust for navbar height */
         background-image: url("/images/homePage.jpg");
@@ -27,27 +21,24 @@
         /* Keeps
        the background fixed during scroll */
       }
+    .container {
+      color: white;
+      position: relative;
+    }
 
-      /* From Uiverse.io by joe-watson-sbf */ 
-.container {
-  color: white;
-  position: relative;
-}
+    /* .container::before, .container::after {
+      content: "";
+      background-color: #fab5704c;
+      position: absolute;
+    } */
 
-.container::before,
-.container::after {
-  content: "";
-  background-color: #fab5704c;
-  position: absolute;
-}
-
-.container::before {
-  border-radius: 50%;
-  width: 6rem;
-  height: 6rem;
-  top: 30%;
-  right: 7%;
-}
+    .container::before {
+      border-radius: 50%;
+      width: 6rem;
+      height: 6rem;
+      top: 30%;
+      right: 7%;
+    }
 
 /* .container::after {
   content: "";
@@ -58,41 +49,41 @@
   border: 1px solid;
 } */
 
-.container .box {
-  width: 15.875em;
-  height: 15.875em;
-  padding: 1rem;
-  background-color: rgba(255, 255, 255, 0.074);
-  border: 1px solid rgba(255, 255, 255, 0.222);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border-radius: 0.7rem;
-  transition: all ease 0.3s;
-}
+  .container .box {
+    width: 15.875em;
+    height: 15.875em;
+    padding: 1rem;
+    background-color: rgba(255, 255, 255, 0.074);
+    border: 1px solid rgba(255, 255, 255, 0.222);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-radius: 0.7rem;
+    transition: all ease 0.3s;
+  }
 
-.container .box {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
+  .container .box {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
 
-.container .box .title {
-  font-size: 2rem;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-}
+  .container .box .title {
+    font-size: 2rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+  }
 
 /* .container .box div strong {
   display: block;
   margin-bottom: 0.5rem;
 } */
 
-.container .box div p {
-  margin: 0;
-  font-size: 0.9em;
-  font-weight: 300;
-  letter-spacing: 0.1em;
-}
+  .container .box div p {
+    margin: 0;
+    font-size: 0.9em;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+  }
 
 /* .container .box div span {
   font-size: 0.7rem;
@@ -104,41 +95,47 @@
   margin-right: 0.2rem;
 } */
 
-.container .box:hover {
-  box-shadow: 0px 0px 20px 1px #ffbb763f;
-  border: 1px solid rgba(255, 255, 255, 0.454);
-}
+  .container .box:hover {
+    box-shadow: 0px 0px 20px 1px #ffbb763f;
+    border: 1px solid rgba(255, 255, 255, 0.454);
+  }
 
-    </style>
-  </head>
-  <body class="container">
-    <h1 class="text-center text-white my-2"><%= title %></h1>
-    <p class="text-center text-white my-1">Welcome to the <span style="font-weight: bolder;">Chrysalis Game Arena</span>, a dynamic platform designed to bring learning to life through engaging classroom games.</p>
-    <p class="text-center text-white my-1">This dedicated section empowers admins and facilitators to seamlessly manage, launch, and monitor game-based activities tailored for Learning sessions.</p>
-    <p class="text-center text-white my-1"">Whether you're setting up a quiz, tracking progress, or customizing gameplay for different learner groups, this console ensures a smooth and impactful experience. The goal is simple: learn while playing, and make every session interactive, fun, and meaningful.</p>
-    <p></p>
-    <div class=" text-white d-flex align-items-center justify-content-center">
-      <a class="rounded text-decoration-none text-white" href="/admin">
-        <div class="container">
-          <div class="box">
-            <span class="title text-center">Admin Login</span>
-            <div>
-              <p>Admin can log in here to Facilitators, Question Sets and Games.</p>
+</style>
+</head>
+  <body >
+    <div class="logo d-flex justify-content-end">
+        <img src="/images/Logo.png" alt="Chrysalis Logo" class="me-5" style="max-height: 80px; margin-top: 20px; margin-bottom: 20px;">
+    </div>
+    <div class="container my-3">
+      <h1 class="text-center text-white my-2"><%= title %></h1>
+      <p class="text-center text-white my-1">Welcome to the <span style="font-weight: bolder;">Chrysalis Game Arena</span>, a dynamic platform designed to bring learning to life through engaging classroom games.</p>
+      <p class="text-center text-white my-1">This dedicated section empowers admins and facilitators to seamlessly manage, launch, and monitor game-based activities tailored for Learning sessions.</p>
+      <p class="text-center text-white my-1">Whether you're setting up a quiz, tracking progress, or customizing gameplay for different learner groups, this console ensures a smooth and impactful experience. The goal is simple: learn while playing, and make every session interactive, fun, and meaningful.</p>
+      <div class="text-white d-flex align-items-center justify-content-center gap-5 mt-4">
+        <a class="rounded text-decoration-none text-white" href="/admin">
+          <div class="container">
+            <div class="box">
+              <span class="title text-center">Admin Login</span>
+              <div>
+                <p>Admin can log in here to Facilitators, Question Sets and Games.</p>
+              </div>
             </div>
           </div>
-        </div>
-      </a>
-      <a class="rounded text-decoration-none text-white" href="/facilitator"><div class="container"><div class="container"> 
-        <div class="container">
-          <div class="box">
-            <span class="title text-center">Facilitator Login</span>
-            <div>
-              <p>Facilitator can log in here to setup and launch the game.</p>
+        </a>
+        <a class="rounded text-decoration-none text-white" href="/facilitator">
+          <div class="container">
+            <div class="box">
+              <span class="title text-center">Facilitator Login</span>
+              <div>
+                <p>Facilitator can log in here to setup and launch the game.</p>
+              </div>
             </div>
-          </div>  
-      </a>
+          </div>
+        </a>
+      </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y" crossorigin="anonymous"></script>
   </body>
 </html>

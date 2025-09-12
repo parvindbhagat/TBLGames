@@ -39,8 +39,11 @@
       }
     </style>
   </head>
-  <body class="d-flex justify-content-center align-items-center vh-100">
-    <div class="game-view container mt-5">
+  <body class="vh-100">
+    <div class="logo d-flex justify-content-end">
+        <img src="/images/Logo.png" alt="Chrysalis Logo" class="me-5" style="max-height: 80px; margin-top: 20px; margin-bottom: 20px;">
+    </div>
+    <div class="game-view container d-flex justify-content-center align-items-center mt-5">
       <div class="row justify-content-center">
         <div class="col-md-10 col-lg-8">
           <div class="card text-center">
@@ -53,7 +56,7 @@
                 <!-- Options will be populated here -->
               </div>
               <div id="actionContainer" class="d-grid">
-                <button id="answerBtn" class="btn btn-lg btn-primary">
+                <button id="answerBtn" class="btn btn-lg btn-tbl">
                   Answer
                 </button>
               </div>
@@ -113,7 +116,7 @@
                           // Reset for the next team to buzz in
                           setTimeout(() => {
                               answerStatusEl.style.display = 'none';
-                              actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-primary">Answer</button>';
+                              actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-tbl">Answer</button>';
                               document.getElementById('answerBtn').addEventListener('click', () => {
                                   socket.emit('answerAttempt', { gameId, teamName });
                               });
@@ -130,7 +133,7 @@
                   document.getElementById('questionHeader').textContent = `Question ${questionIndex + 1} of ${totalQuestions}`;
                   displayQuestion(question, false);
                   answerStatusEl.style.display = 'none';
-                  actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-primary">Answer</button>';
+                  actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-tbl">Answer</button>';
                   document.getElementById('answerBtn').addEventListener('click', () => {
                       socket.emit('answerAttempt', { gameId, teamName });
                   });
