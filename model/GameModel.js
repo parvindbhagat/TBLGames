@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { QuestionSchema } = require('./QuestionSetModel');
+const { QuestionSchema, QuestionSet } = require('./QuestionSetModel');
 
 const TeamSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -10,7 +10,8 @@ const TeamSchema = new mongoose.Schema({
 const GameSchema = new mongoose.Schema({
     // A unique, human-readable ID for the game room
     gameId: { type: String, required: true, unique: true, index: true },
-
+    gameType: { type: String, enum: ['FFF', 'Bingo', 'RTD'], required: true },
+    attemptedTeams: { type: [String], default: [] }, // Teams that have attempted to answer the current question
     // Setup details from the facilitator
     clientName: { type: String, required: true },
     interventionName: { type: String },

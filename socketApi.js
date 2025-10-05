@@ -64,48 +64,52 @@ function initialize(io) {
         // A team joins the game
         socket.on('teamJoin', async ({ gameId, teamName }) => {
             try {
-                const newTeam = {
-                    name: teamName,
-                    score: 0,
-                    isReady: false,
-                    socketId: socket.id
-                };
+                const game = await Game.findOne({ gameId });
+                if (!game) {
+                    socket.emit('joinError', 'Game does not exist.');
+                    return;
+                }
 
-                // Use an atomic findAndModify operation to prevent race conditions.
-                const updatedGame = await Game.findOneAndUpdate(
-                    {
-                        gameId: gameId,
-                        'teams.name': { $ne: teamName }, // Condition: team name must not already exist in the array.
-                        // Condition: number of teams must be less than the allowed number.
-                        // We use $expr to compare two fields from the same document.
-                        $expr: { $lt: [{ $size: '$teams' }, '$numberOfTeams'] }
-                    },
-                    {
-                        $push: { teams: newTeam } // Action: add the new team to the array.
-                    },
-                    {
-                        new: true, // Option: return the document after the update.
-                        runValidators: true // Option: ensure our subdocument schema rules are applied.
+                const existingTeam = game.teams.find(t => t.name === teamName);
+
+                if (game.status === 'lobby') {
+                    // Only allow new teams if not already present and game is not full
+                    if (existingTeam) {
+                        socket.emit('joinError', 'A team with this name has already joined.');
+                        return;
                     }
-                );
-
-                if (updatedGame) {
-                    // The update was successful, meaning all conditions were met atomically.
+                    if (game.teams.length >= game.numberOfTeams) {
+                        socket.emit('joinError', 'This game is already full.');
+                        return;
+                    }
+                    // Add new team
+                    const newTeam = {
+                        name: teamName,
+                        score: 0,
+                        isReady: false,
+                        socketId: socket.id
+                    };
+                    game.teams.push(newTeam);
+                    await game.save();
                     socket.join(gameId);
                     socket.gameInfo = { gameId, teamName };
-                    io.to(gameId).emit('updateGameState', updatedGame.toObject());
+                    io.to(gameId).emit('updateGameState', game.toObject());
                 } else {
-                    // The update failed, which means one of our conditions was not met.
-                    // We can now safely query the game to find out why and give a specific error.
-                    const game = await Game.findOne({ gameId }).lean(); // .lean() for a fast, read-only query
-                    if (!game) {
-                        socket.emit('joinError', 'Game does not exist.');
-                    } else if (game.teams.some(t => t.name === teamName)) {
-                        socket.emit('joinError', 'A team with this name has already joined.');
-                    } else if (game.teams.length >= game.numberOfTeams) {
-                        socket.emit('joinError', 'This game is already full.');
+                    // Game is in-progress or finished
+                    if (existingTeam) {
+                        // Allow reconnect for existing team
+                        existingTeam.socketId = socket.id;
+                        await game.save();
+                        socket.join(gameId);
+                        socket.gameInfo = { gameId, teamName };
+                        io.to(gameId).emit('updateGameState', game.toObject());
                     } else {
-                        socket.emit('joinError', 'An unknown error occurred while trying to join.');
+                        // New team after game started: Spectator only
+                        socket.join(gameId);
+                        socket.gameInfo = { gameId, spectator: true };
+                        socket.emit('spectatorView', { gameId, message: 'You are viewing as a spectator.' });
+                        // Optionally, emit current game state for spectators
+                        socket.emit('updateGameState', game.toObject());
                     }
                 }
             } catch (error) {
@@ -148,7 +152,13 @@ function initialize(io) {
             }
         });
 
-        // A team clicks the "Answer" button
+        // when team couldn't answer in 60 seconds
+        // io.to(game.gameId).emit('answerTimeout', {
+        //     teamName: answeringTeam.name,
+        //     openForNextAnswer: true // or false if no more teams can answer
+        // });
+
+        // A team clicks the "BUZZER" button
         socket.on('answerAttempt', async ({ gameId, teamName }) => {
             try {
                 const game = await Game.findOne({ gameId });
@@ -198,6 +208,10 @@ function initialize(io) {
                     // Question is now open for others to answer
                     game.answeringTeamName = null;
                     openForNextAnswer = true;
+                    if (!game.attemptedTeams) game.attemptedTeams = [];
+                    if (!game.attemptedTeams.includes(teamName)) {
+                        game.attemptedTeams.push(teamName);
+                    }
                 }
 
                 await game.save();
@@ -217,6 +231,7 @@ function initialize(io) {
 
                 game.currentQuestionIndex++;
                 game.answeringTeamName = null;
+                game.attemptedTeams = [];
 
                 if (game.currentQuestionIndex >= game.questions.length) {
                     await endAndBroadcastGame(game, io);
@@ -302,6 +317,36 @@ function initialize(io) {
                 } catch (error) {
                     console.error('Error during disconnect cleanup:', error);
                 }
+            }
+        });
+
+        socket.on('answerTimeout', async ({ gameId, teamName }) => {
+            try {
+                const game = await Game.findOne({ gameId });
+                if (!game || game.status !== 'in-progress') return;
+
+                // Mark this team as having attempted this question
+                if (!game.attemptedTeams) game.attemptedTeams = [];
+                if (!game.attemptedTeams.includes(teamName)) {
+                    game.attemptedTeams.push(teamName);
+                }
+
+                // Clear answering team
+                game.answeringTeamName = null;
+                await game.save();
+
+                // Check if other teams can answer
+                const remainingTeams = game.teams.filter(t => !game.attemptedTeams.includes(t.name));
+                const openForNextAnswer = remainingTeams.length > 0;
+
+                io.to(gameId).emit('answerTimeout', {
+                    teamName,
+                    openForNextAnswer
+                });
+
+                io.to(gameId).emit('updateGameState', game.toObject());
+            } catch (error) {
+                console.error(`Error handling answerTimeout for game ${gameId}:`, error);
             }
         });
     });

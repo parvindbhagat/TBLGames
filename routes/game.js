@@ -16,7 +16,7 @@ router.get('/join/:gameId', async function(req, res, next) {
             return next(err);
         }
 
-        res.render('joingame', { title: `Join Game: ${game.clientName}`, gameId, game });
+        res.render('joingame', { title: `Join Game: ${game.clientName} ${game.gameType}`, gameId, game });
     } catch (error) {
         next(error);
     }

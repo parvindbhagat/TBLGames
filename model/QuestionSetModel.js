@@ -57,6 +57,11 @@ const QuestionSetSchema = new Schema({
     },
     // Here we embed the array of questions.
     questions: [QuestionSchema],
+    compatibleGames: {
+        type: [String],
+        enum: ['FFF', 'Bingo', 'RTD'],
+        default: []
+    },
     accessibleBy: {
         type: [String], // Defines an array of strings
         default: []     // Defaults to an empty array

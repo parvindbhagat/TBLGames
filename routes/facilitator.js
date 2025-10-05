@@ -3,6 +3,7 @@ var router = express.Router();
 const QuestionSet = require('../model/QuestionSetModel');
 const Game = require('../model/GameModel');
 const { nanoid } = require('nanoid'); // A great tool for unique IDs. `npm install nanoid`
+const QRCode = require('qrcode'); // Make sure this is required at the top
 
 // Middleware to simulate a logged-in facilitator (replace with your actual auth middleware)
 const ensureAuthenticated = (req, res, next) => {
@@ -50,7 +51,7 @@ router.get('/game-setup', ensureAuthenticated, async (req, res, next) => {
 /* POST to create a new game room. */
 router.post('/game-setup', ensureAuthenticated, async (req, res, next) => {
     try {
-        const { clientName, interventionName, batchId, questionSetId, numQuestions, numTeams } = req.body;
+        const { clientName, interventionName, batchId, questionSetId, numQuestions, numTeams, gameType } = req.body;
 
         // 1. Fetch the full question set
         const questionSet = await QuestionSet.findById(questionSetId).lean();
@@ -71,7 +72,8 @@ router.post('/game-setup', ensureAuthenticated, async (req, res, next) => {
             numberOfTeams: numTeams,
             questionSet: questionSetId,
             questions: selectedQuestions,
-            facilitator: req.user._id
+            facilitator: req.user._id,
+            gameType
         });
 
         await newGame.save();
@@ -100,6 +102,23 @@ router.get('/lobby/:gameId', ensureAuthenticated, async (req, res, next) => {
     res.render('flobby', { title: `Lobby for ${game.clientName}`, game, joinUrl });
   } catch (error) {
     next(error);
+  }
+});
+
+/*Show QR Code of the join URL*/
+router.get('/game/:gameId/qr', async (req, res) => {
+  const gameId = req.params.gameId;
+  const joinUrl = `https://games.chrysalisonline.in/join/${gameId}`;
+
+  try {
+    const qrDataUrl = await QRCode.toDataURL(joinUrl);
+    res.send(`
+      <h2 class="mb-3">Scan to Join Game</h2>
+      <img src="${qrDataUrl}" alt="QR Code" class="qr-img" style="max-width:90vw;max-height:60vh;width:100%;height:auto;display:block;margin:auto;">
+      <div class="qr-url-text mt-3 text-break">Or visit: <a href="${joinUrl}">${joinUrl}</a></div>
+    `);
+  } catch (err) {
+    res.status(500).send('Error generating QR code');
   }
 });
 

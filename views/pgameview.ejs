@@ -32,7 +32,7 @@
       backdrop-filter: blur(10px);
       border-radius: 15px;
       box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.3);
+      /* border: 1px solid rgba(255, 255, 255, 0.3); */
       padding: 2rem;
       text-align: center;
       /* color: white; */
@@ -48,6 +48,7 @@
         <div class="col-md-10 col-lg-8">
           <div class="card text-center">
             <div class="card-header">
+              <h4><%= game.clientName %> <%=  game.gameType %> <%=game.teamName %> </h4>
               <h5 id="questionHeader">Question <%= game.currentQuestionIndex + 1 %> of <%= game.questions.length %></h5>
             </div>
             <div class="card-body p-4">
@@ -57,7 +58,7 @@
               </div>
               <div id="actionContainer" class="d-grid">
                 <button id="answerBtn" class="btn btn-lg btn-tbl">
-                  Answer
+                  Buzzer
                 </button>
               </div>
               <div
@@ -78,6 +79,24 @@
               // Retrieve teamName from sessionStorage
               const teamName = sessionStorage.getItem('teamName');
               const totalQuestions = <%= game.questions.length %>;
+              const gameStatus = "<%= game.status %>";
+              const gameTeams = <%- JSON.stringify(game.teams) %>;
+              // let isAnswered = <%= game.answeringTeamName %> === '__answered__';
+              const winnerScore = gameTeams.length > 0 ? gameTeams[0].score : -Infinity;
+              const questionTextEl = document.getElementById('questionText');
+              const optionsContainerEl = document.getElementById('optionsContainer');
+              const actionContainerEl = document.getElementById('actionContainer');
+              const answerBtn = document.getElementById('answerBtn');
+              const answerStatusEl = document.getElementById('answerStatus');
+              let currentQuestion = <%- JSON.stringify(game.questions[game.currentQuestionIndex] || null) %>;
+
+              if (gameStatus === 'finished') {
+                renderScorecard(gameTeams, winnerScore);
+              } else {
+                if (currentQuestion) {
+                    displayQuestion(currentQuestion, false);
+                }
+              }
 
               socket.on('connect', () => {
                   console.log('Connected to server with ID:', socket.id);
@@ -85,12 +104,8 @@
                   socket.emit('playerConnect', { gameId, teamName });
               });
 
-              const questionTextEl = document.getElementById('questionText');
-              const optionsContainerEl = document.getElementById('optionsContainer');
-              const actionContainerEl = document.getElementById('actionContainer');
-              const answerBtn = document.getElementById('answerBtn');
-              const answerStatusEl = document.getElementById('answerStatus');
-              let currentQuestion = <%- JSON.stringify(game.questions[0] || null) %>;
+
+            //  currentQuestion = <%- JSON.stringify(game.questions[0] || null) %>;
 
               // 1. Display the first question
               if (currentQuestion) {
@@ -104,28 +119,37 @@
 
                       // 4. Listen for the result of an answer submission
               socket.on('answerResult', ({ teamName: answeringTeam, wasCorrect, openForNextAnswer }) => {
-                  if (wasCorrect) {
-                      answerStatusEl.className = 'alert alert-success mt-4';
-                      answerStatusEl.textContent = `${answeringTeam} answered correctly!`;
-                      // Options remain unclickable, waiting for facilitator
-                      displayQuestion(currentQuestion, false);
-                  } else {
-                      answerStatusEl.className = 'alert alert-danger mt-4';
-                      answerStatusEl.textContent = `${answeringTeam} answered incorrectly.`;
-                      if (openForNextAnswer) {
-                          // Reset for the next team to buzz in
-                          setTimeout(() => {
-                              answerStatusEl.style.display = 'none';
-                              actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-tbl">Answer</button>';
-                              document.getElementById('answerBtn').addEventListener('click', () => {
-                                  socket.emit('answerAttempt', { gameId, teamName });
-                              });
-                              displayQuestion(currentQuestion, false);
-                          }, 2500); // Show result for 2.5 seconds
-                      }
-                  }
-                  answerStatusEl.style.display = 'block';
-              });
+    if (wasCorrect) {
+        answerStatusEl.className = 'alert alert-success mt-4';
+        answerStatusEl.textContent = `${answeringTeam} answered correctly!`;
+        // Hide or disable the buzzer for all teams
+        actionContainerEl.innerHTML = '';
+        // Options remain unclickable, waiting for facilitator
+        displayQuestion(currentQuestion, false);
+    } else {
+        answerStatusEl.className = 'alert alert-danger mt-4';
+        answerStatusEl.textContent = `${answeringTeam} answered incorrectly.`;
+        if (openForNextAnswer) {
+            // Reset for the next team to buzz in
+            setTimeout(() => {
+                answerStatusEl.style.display = 'none';
+                actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-tbl">Buzzer</button>';
+                const answerBtn = document.getElementById('answerBtn');
+                // Disable buzzer if team has already attempted
+                if (window.game && window.game.attemptedTeams && window.game.attemptedTeams.includes(teamName)) {
+                    answerBtn.disabled = true;
+                } else {
+                    answerBtn.disabled = false;
+                }
+                answerBtn.addEventListener('click', () => {
+                    socket.emit('answerAttempt', { gameId, teamName });
+                });
+                displayQuestion(currentQuestion, false);
+            }, 2500); // Show result for 2.5 seconds
+        }
+    }
+    answerStatusEl.style.display = 'block';
+});
 
               // 5. Listen for the next question from the facilitator
               socket.on('newQuestion', ({ question, questionIndex }) => {
@@ -133,7 +157,7 @@
                   document.getElementById('questionHeader').textContent = `Question ${questionIndex + 1} of ${totalQuestions}`;
                   displayQuestion(question, false);
                   answerStatusEl.style.display = 'none';
-                  actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-tbl">Answer</button>';
+                  actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-tbl">Buzzer</button>';
                   document.getElementById('answerBtn').addEventListener('click', () => {
                       socket.emit('answerAttempt', { gameId, teamName });
                   });
@@ -141,102 +165,135 @@
 
               // Central handler for all game state changes
               socket.on('updateGameState', (game) => {
-                  console.log('Game state updated:', game);
-                  const answeringTeamName = game.answeringTeamName;
-                  currentQuestion = game.questions[game.currentQuestionIndex];
+    window.game = game;
+    const answeringTeamName = game.answeringTeamName;
+    currentQuestion = game.questions[game.currentQuestionIndex];
 
-                  if (answeringTeamName && answeringTeamName !== '__answered__') {
-                      // A team has locked in to answer
-                      actionContainerEl.innerHTML = ''; // Clear the Answer button
-                      if (answeringTeamName === teamName) {
-                          // It's our turn to answer!
-                          answerStatusEl.className = 'alert alert-info mt-4';
-                          answerStatusEl.textContent = 'Your turn! Please select an option.';
-                          answerStatusEl.style.display = 'block';
-                          displayQuestion(currentQuestion, true); // Re-render options as clickable
-                      } else {
-                          // Another team is answering
-                          answerStatusEl.className = 'alert alert-secondary mt-4';
-                          answerStatusEl.textContent = `${answeringTeamName} is answering...`;
-                          answerStatusEl.style.display = 'block';
-                          displayQuestion(currentQuestion, false); // Ensure our options are not clickable
-                      }
-                  } else {
-                      // No one is answering (or question was just answered correctly)
-                      // This state is handled by 'newQuestion' and 'answerResult'
-                  }
-              });
+    // Only render for the answering team
+    if (answeringTeamName && answeringTeamName !== '__answered__') {
+        actionContainerEl.innerHTML = '';
+        if (answeringTeamName === teamName) {
+            // This team is answering: show options as buttons and submit button
+            answerStatusEl.className = 'alert alert-info mt-4';
+            answerStatusEl.textContent = 'Your turn! Please select an option.';
+            answerStatusEl.style.display = 'block';
+            displayQuestion(currentQuestion, true); // Only for answering team
+        } else {
+            // Another team is answering: show options as text only, no submit button
+            answerStatusEl.className = 'alert alert-secondary mt-4';
+            answerStatusEl.textContent = `${answeringTeamName} is answering...`;
+            answerStatusEl.style.display = 'block';
+            displayQuestion(currentQuestion, false); // Only for non-answering teams
+        }
+    } else {
+        // No team is answering, show buzzer logic
+        displayQuestion(currentQuestion, false);
+    }
+});
 
+              socket.on('answerTimeout', ({ teamName: timedOutTeam, openForNextAnswer }) => {
+    // Show message for all teams
+    answerStatusEl.className = 'alert alert-warning mt-4';
+    answerStatusEl.textContent = `${timedOutTeam} ran out of time.`;
+    answerStatusEl.style.display = 'block';
 
+    // If open for next answer, enable buzzer for teams that haven't attempted
+    if (openForNextAnswer) {
+        actionContainerEl.innerHTML = '<button id="answerBtn" class="btn btn-lg btn-tbl">Buzzer</button>';
+        const answerBtn = document.getElementById('answerBtn');
+        answerBtn.disabled = false;
+        answerBtn.addEventListener('click', () => {
+            socket.emit('answerAttempt', { gameId, teamName });
+        });
+    }
+});
 
               // Listen for the game to end
               socket.on('gameOver', (game) => {
-                  const container = document.querySelector('.container');
                   const winnerScore = game.teams.length > 0 ? game.teams[0].score : -Infinity;
-
-                  let finalViewHtml = `
-                      <div class="card text-center">
-                          <div class="card-header">
-                              <h1 class="display-4">Game Over!</h1>
-                          </div>
-                          <div class="card-body p-4">
-                              <h2 class="mb-4">Final Scoreboard</h2>
-                              <ul class="list-group">
-                  `;
-
-                  game.teams.forEach(team => {
-                      const isWinner = team.score === winnerScore;
-                      finalViewHtml += `
-                          <li class="list-group-item d-flex justify-content-between align-items-center fs-4 ${isWinner ? 'list-group-item-success' : ''}">
-                              <span>
-                                  ${team.name}
-                                  ${isWinner ? '<span class="badge bg-warning text-dark ms-2">Winner!</span>' : ''}
-                              </span>
-                              <span class="badge bg-primary rounded-pill">${team.score}</span>
-                          </li>`;
-                  });
-                  finalViewHtml += `</ul></div></div>`;
-                  container.innerHTML = finalViewHtml;
+                  renderScorecard(game.teams, winnerScore);
               });
               // function displayQuestion(question)
 
               function displayQuestion(question, isAnswering) {
-          questionTextEl.textContent = question.questionText;
-          optionsContainerEl.innerHTML = '';
-          let selectedAnswer = null;
-          let selectedElement = null;
+    questionTextEl.textContent = question.questionText;
+    optionsContainerEl.innerHTML = '';
+    let selectedAnswer = null;
+    let selectedElement = null;
 
-          question.options.forEach((option, index) => {
-              const el = document.createElement(isAnswering ? 'button' : 'div');
-              el.className = 'list-group-item';
-              if (isAnswering) {
-                  el.classList.add('list-group-item-action');
-                  el.onclick = () => {
-                      // Remove 'active' from all buttons
-                      optionsContainerEl.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-                      // Add 'active' to the clicked button
-                      el.classList.add('active');
-                      selectedAnswer = option;
-                      selectedElement = el;
-                      // Enable submit button only if an option is selected
-                      submitBtn.disabled = false;
-                  };
-              }
-              el.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
-              optionsContainerEl.appendChild(el);
-          });
-
-          if (isAnswering) {
-              actionContainerEl.innerHTML = '<button id="submitBtn" class="btn btn-lg btn-success" disabled>Submit Answer</button>';
-              const submitBtn = document.getElementById('submitBtn');
-              submitBtn.addEventListener('click', () => {
-                  if (selectedAnswer !== null) {
-                      socket.emit('submitAnswer', { gameId, teamName, answer: selectedAnswer });
-                      actionContainerEl.innerHTML = '';
-                  }
-              });
-            }
+    // Render options
+    question.options.forEach((option, index) => {
+        const el = document.createElement(isAnswering ? 'button' : 'div');
+        el.className = 'list-group-item';
+        if (isAnswering) {
+            el.classList.add('list-group-item-action');
+            el.onclick = () => {
+                optionsContainerEl.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                el.classList.add('active');
+                selectedAnswer = option;
+                selectedElement = el;
+                if (submitBtn) submitBtn.disabled = false;
+            };
         }
+        el.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+        optionsContainerEl.appendChild(el);
+    });
+
+    // If answering, show submit button (initially disabled)
+    let submitBtn = null;
+    if (isAnswering) {
+        actionContainerEl.innerHTML = `<button id="submitBtn" class="btn btn-lg btn-success" disabled>Submit Answer</button>`;
+        submitBtn = document.getElementById('submitBtn');
+        submitBtn.onclick = () => {
+            if (selectedAnswer !== null) {
+                socket.emit('submitAnswer', { gameId, teamName, answer: selectedAnswer });
+                actionContainerEl.innerHTML = '';
+            }
+        };
+    } else {
+        // Only show buzzer countdown if no team has attempted yet
+        const attemptedTeams = window.game && window.game.attemptedTeams ? window.game.attemptedTeams : [];
+        if (attemptedTeams.length === 0) {
+            actionContainerEl.innerHTML = `<button id="answerBtn" class="btn btn-lg btn-tbl" disabled>Buzzer (5)</button>`;
+            const answerBtn = document.getElementById('answerBtn');
+            let delay = 5;
+            const buzzerTimer = setInterval(() => {
+                delay--;
+                answerBtn.textContent = `Buzzer (${delay})`;
+                if (delay <= 0) {
+                    clearInterval(buzzerTimer);
+                    answerBtn.textContent = 'Buzzer';
+                    // Disable buzzer if team has already attempted
+                    if (window.game && window.game.attemptedTeams && window.game.attemptedTeams.includes(teamName)) {
+                        answerBtn.disabled = true;
+                    } else {
+                        answerBtn.disabled = false;
+                    }
+                }
+            }, 1000);
+
+            answerBtn.onclick = () => {
+                if (!answerBtn.disabled) {
+                    socket.emit('answerAttempt', { gameId, teamName });
+                }
+            };
+        } else {
+            // If any team has attempted, show buzzer immediately (enabled/disabled as needed)
+            actionContainerEl.innerHTML = `<button id="answerBtn" class="btn btn-lg btn-tbl">Buzzer</button>`;
+            const answerBtn = document.getElementById('answerBtn');
+            if (window.game && window.game.attemptedTeams && window.game.attemptedTeams.includes(teamName)) {
+                answerBtn.disabled = true;
+            } else {
+                answerBtn.disabled = false;
+            }
+            answerBtn.onclick = () => {
+                if (!answerBtn.disabled) {
+                    socket.emit('answerAttempt', { gameId, teamName });
+                }
+            };
+        }
+    }
+}
 
               function selectOption(selectedElement, selectedAnswer) {
                   const allOptions = optionsContainerEl.querySelectorAll('button');
@@ -253,6 +310,55 @@
                       actionContainerEl.innerHTML = '';
                   });
               }
+
+    function renderScorecard(gameTeams, winnerScore) {
+    const container = document.querySelector('.container');
+    let finalViewHtml = `
+        <div class="card text-center">
+            <div class="card-header">
+                <h1 class="display-4">Game Over!</h1>
+            </div>
+            <div class="card-body p-4">
+                <h2 class="mb-4">Final Scoreboard</h2>
+                <ul class="list-group">
+    `;
+    gameTeams.forEach(team => {
+        const isWinner = team.score === winnerScore;
+        finalViewHtml += `
+            <li class="list-group-item d-flex justify-content-between align-items-center fs-4 ${isWinner ? 'list-group-item-success' : ''}">
+                <span>
+                    ${team.name}
+                    ${isWinner ? '<span class="badge bg-warning text-dark ms-2">Winner!</span>' : ''}
+                </span>
+                <span class="badge bg-primary rounded-pill">${team.score}</span>
+            </li>`;
+    });
+    finalViewHtml += `</ul></div></div>`;
+    container.innerHTML = finalViewHtml;
+    }
+
+    socket.on('spectatorView', ({ gameId, message }) => {
+    // Show spectator banner
+    showSpectatorBanner(message);
+
+    // Optionally, disable all controls
+    actionContainerEl.innerHTML = '';
+    answerStatusEl.style.display = 'none';
+});
+
+// Helper to show spectator banner
+function showSpectatorBanner(message) {
+    let banner = document.getElementById('spectatorBanner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'spectatorBanner';
+        banner.className = 'alert alert-info text-center mb-4';
+        banner.textContent = message || 'You are viewing as a spectator.';
+        // Insert banner at the top of the game-view container
+        const gameView = document.querySelector('.game-view');
+        gameView.prepend(banner);
+    }
+}
     </script>
   </body>
 </html>

@@ -61,6 +61,16 @@
                             </div>
 
                             <div class="mb-3">
+                                <label for="gameType" class="form-label">Game Type</label>
+                                <select class="form-select" id="gameType" name="gameType" required>
+                                    <option value="" disabled selected>Select a game type...</option>
+                                    <option value="FFF">Fastest Finger First (FFF)</option>
+                                    <option value="Bingo">Bingo</option>
+                                    <option value="RTD" disabled>Roll The Dice (RTD)</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
                                 <label for="questionSetId" class="form-label">Choose Question Set</label>
                                 <select class="form-select" id="questionSetId" name="questionSetId" required>
                                     <option value="" disabled selected>Select a set...</option>
